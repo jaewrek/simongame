@@ -33,8 +33,11 @@ export default {
       moves: [],
       strictMode: false,
       playerMoves: 0,
-      waitTime: 3000
-
+      waitTime: 3000,
+      sounds: ['https://s3.amazonaws.com/freecodecamp/simonSound1.mp3',
+      'https://s3.amazonaws.com/freecodecamp/simonSound2.mp3',
+       'https://s3.amazonaws.com/freecodecamp/simonSound3.mp3',
+       'https://s3.amazonaws.com/freecodecamp/simonSound4.mp3']
     }
   },
   methods: {
@@ -76,18 +79,32 @@ export default {
       let selectedColor = document.getElementById(color);
       // selectedColor.removeClass(green);
       selectedColor.classList.toggle(`light-${color}`);
+      this.playSound(color);
       setTimeout( () => {
         console.log(selectedColor);
         selectedColor.classList.toggle(`light-${color}`);
       }, 500);
     },
+    playSound(color){
+      let sound = new Audio(this.sounds[this.colors.indexOf(color)]).play();
+    },
     showMoves() {
       console.log(this.moves);
-      for(let move of this.moves){
-        setTimeout( () => {
-          this.lightColor(move);
-        }, 1500); 
-      }
+      this.unclickable();
+      let move = 0;
+      let showSequence = setInterval( () => {
+        this.lightColor(this.moves[move]);
+        move++;
+        if (move === this.moves.length){
+          clearInterval(showSequence);
+          this.clickable();
+        }
+      }, 1000)
+      // for(let move of this.moves){
+      //   setTimeout( () => {
+      //     return this.lightColor(move);
+      //   }, 1500); 
+      // }
       this.playerInput(this.waitTime);
     },
     playerInput(wait) {
@@ -99,6 +116,12 @@ export default {
       }, wait);
     },
     outOfTime() {
+
+    },
+    unclickable() {
+
+    },
+    clickable() {
 
     }
   }
