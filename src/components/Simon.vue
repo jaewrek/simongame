@@ -1,22 +1,24 @@
 <template>
   <div class="simon wrap">
-    <div @click="submitMove('green')" class="green color" id="green"></div>
-    <div @click="submitMove('red')" class="red color" id="red"></div>
+    <div @click="submitMove('green')" class="green color nw click-state" id="green"></div>
+    <div @click="submitMove('red')" class="red color ne click-state" id="red"></div>
     <div class="controls">
-      <h3 class="control-text">Simon</h3>
       <span class="control-text">
         Count: {{ numberOfMoves }}
       </span>
+      <span class="control-text">Simon</span>
+      <button @click="power">TURN <span v-if="powered">OFF</span><span v-else>ON</span></button>
       <button @click="startGame">Start</button>
-      <button @click="toggleStrictMode">Strict</button>
-      <span v-if="strictMode">ON</span>
-      <!-- <label class="switch">
-        <input type="checkbox">
-          <span class="slider"></span>
-      </label> -->
+      
+        <button @click="toggleStrictMode">Strict<span id="strict">.</span></button>
+        
+
+      
+      
+      
     </div>
-    <div @click="submitMove('yellow')" class="yellow color" id="yellow"></div>
-    <div @click="submitMove('blue')" class="blue color" id="blue"></div>
+    <div @click="submitMove('yellow')" class="yellow color sw click-state" id="yellow"></div>
+    <div @click="submitMove('blue')" class="blue color se click-state" id="blue"></div>
     
     
     
@@ -28,12 +30,15 @@ export default {
   name: 'Simon',
   data () {
     return {
+      powered: false,
       colors: ['green', 'red', 'yellow', 'blue'],
       numberOfMoves: 0,
       moves: [],
       strictMode: false,
       playerMoves: 0,
-      waitTime: 3000,
+      gameState: '',
+      playerWaitTime: 3000,
+      waitTime: 750,
       sounds: ['https://s3.amazonaws.com/freecodecamp/simonSound1.mp3',
       'https://s3.amazonaws.com/freecodecamp/simonSound2.mp3',
        'https://s3.amazonaws.com/freecodecamp/simonSound3.mp3',
@@ -41,88 +46,137 @@ export default {
     }
   },
   methods: {
+    power() {
+      this.powered = !this.powered;
+      this.numberOfMoves = 0;
+      this.moves = [];
+      if (this.strictMode){
+        this.toggleStrictMode();
+      }
+      this.gameState = '';
+    },
     startGame() {
+      if(!this.powered){ return; }
+      if(this.numberOfMoves > 0){ return; }
       this.selectRandomColor();
       console.log(this.moves);
     },
     toggleStrictMode() {
       this.strictMode = !this.strictMode;
+      let strictStatus = document.getElementById("strict");
+      strictStatus.style.backgroundColor = this.strictMode ? 'red' : 'black'
+      
     },
     submitMove(color = '') {
+      // this.gameState = 'playerTurn';
+      // fix to remove assignment to empty string
       if(color!=''){
         this.lightColor(color);
-      }
-      
+      } 
       console.log('submitMove', color)
       if(this.moves[this.playerMoves] == color){
         console.log('matched')
         this.playerMoves++;
+        // this.gameState = 'playerTurn';
         this.playerInput(this.waitTime);
+
         if(this.moves.length == this.playerMoves){
           this.playerMoves = 0;
           this.selectRandomColor();
         }
-        return true;
-      }
-      return false;
+        // return true;
+      } else {
+          if (this.strictMode){
+            // show message end game
+            // setTimeout(()=>{
+            //   alert("Wrong move! Powering off")},1000);
+            this.power();
+            return;
+          }
+          console.log("wrong color");
+          // alert("Wrong color, playing sequence");
+          // // show warning
+          this.showMoves();
+        }
+      // return false;
     },
     selectRandomColor() {
       let randomColor = Math.floor(Math.random() * Math.floor(4));
       this.moves.push(this.colors[randomColor]);
       this.numberOfMoves++;
-
       setTimeout( () => {
        this.showMoves();
-      }, 1000)
+      }, this.waitTime)
     },
     lightColor(color){
       let selectedColor = document.getElementById(color);
-      // selectedColor.removeClass(green);
       selectedColor.classList.toggle(`light-${color}`);
       this.playSound(color);
       setTimeout( () => {
         console.log(selectedColor);
         selectedColor.classList.toggle(`light-${color}`);
-      }, 500);
+      }, this.waitTime);
     },
     playSound(color){
       let sound = new Audio(this.sounds[this.colors.indexOf(color)]).play();
     },
     showMoves() {
+      this.gameState = 'playSequence';
       console.log(this.moves);
-      this.unclickable();
+      // this.toggleClickState();
       let move = 0;
       let showSequence = setInterval( () => {
         this.lightColor(this.moves[move]);
         move++;
+        console.log(this.moves.length, 'length')
+        console.log(move,'move')
         if (move === this.moves.length){
+          console.log('clearsequence')
           clearInterval(showSequence);
-          this.clickable();
+          // this.toggleClickState();
         }
-      }, 1000)
-      // for(let move of this.moves){
-      //   setTimeout( () => {
-      //     return this.lightColor(move);
-      //   }, 1500); 
-      // }
+      }, this.waitTime)   
       this.playerInput(this.waitTime);
     },
     playerInput(wait) {
-      setTimeout( () => {
-        if (this.submitMove()){
+      this.gameState = 'playerTurn';
+      //change to set interval and clear when move is submitted
+      let delay = setInterval( () => {
+        if (this.gameState === 'playerTurn'){
+          clearInterval(delay);
           return;
         }
           this.outOfTime();
-      }, wait);
+          clearInterval(interval);
+      }, this.playerWaitTime);
     },
     outOfTime() {
-
+      // show message game over
+      this.power();
+      console.log("Out of time")
     },
-    unclickable() {
-
+    toggleClickState(state) {
+      for(let color of this.colors){
+        let selectedColor = document.getElementById(color);
+        if(state === 'off'){ 
+          selectedColor.classList.add('click-state');
+        } else {
+          selectedColor.classList.remove('click-state');
+        }
+       
+      }
     },
-    clickable() {
 
+  },
+    watch: {
+    gameState() {
+      if (this.gameState === 'playerTurn'){
+        this.toggleClickState('on');
+      }
+      if (this.gameState === 'playSequence' ||
+        this.gameState === ''){
+        this.toggleClickState('off');
+      }
     }
   }
 }
@@ -130,7 +184,12 @@ export default {
 
 
 <style>
+.controls {
+  display: flex;
+  justify-content: space-around;
+}
 .control-text {
+  font-weight: bold;
   color: white;
 }
 .color {
@@ -142,22 +201,21 @@ export default {
   border: 12px solid #333;
 }
 /*green*/
-.t-l {
+.nw {
   border-top-left-radius : 100%;
 }
 /*red*/
-.t-r {
+.ne {
   border-top-right-radius : 100%;
 }
 /*blue*/
-.b-r {
+.se {
   border-bottom-right-radius : 100%;
 }
 /*yellow*/
-.b-l {
+.sw {
   border-bottom-left-radius : 100%;
 }
-
 
 .wrap{
   width: 472px;
@@ -200,47 +258,16 @@ export default {
 .light-red {
   background-color: #EF3D47;
 }
-/* Hide default HTML checkbox */
-/*.switch input {
-  display:none;
-}
-*/
-/* The slider */
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
 
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
+#strict {
+margin-left: 3px;
+display: inline-block;
+width: 13px;
+height: 13px;
+background: black;
+border-radius: 100%;
 }
-
-input:checked + .slider {
-  background-color: #2196F3;
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
-}
-
-input:checked + .slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
+.click-state{
+  pointer-events: none;
 }
 </style>
