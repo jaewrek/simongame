@@ -6,16 +6,13 @@
       <span class="control-text">
         Count: {{ numberOfMoves }}
       </span>
-      <span class="control-text">Simon</span>
+      <span v-if="message != ''" class="message">{{ message }}</span>
+      <!-- <span class="control-text">Simon</span> -->
       <button @click="power">TURN <span v-if="powered">OFF</span><span v-else>ON</span></button>
       <button @click="startGame">Start</button>
       
         <button @click="toggleStrictMode">Strict<span id="strict">.</span></button>
-        
-
-      
-      
-      
+           
     </div>
     <div @click="submitMove('yellow')" class="yellow color sw click-state" id="yellow"></div>
     <div @click="submitMove('blue')" class="blue color se click-state" id="blue"></div>
@@ -42,7 +39,12 @@ export default {
       sounds: ['https://s3.amazonaws.com/freecodecamp/simonSound1.mp3',
       'https://s3.amazonaws.com/freecodecamp/simonSound2.mp3',
        'https://s3.amazonaws.com/freecodecamp/simonSound3.mp3',
-       'https://s3.amazonaws.com/freecodecamp/simonSound4.mp3']
+       'https://s3.amazonaws.com/freecodecamp/simonSound4.mp3'],
+       message: 'Simon',
+       messages: ['Wrong color!',
+       'Out of time!', 
+       'You won!',
+       'Simon']
     }
   },
   methods: {
@@ -53,52 +55,51 @@ export default {
       if (this.strictMode){
         this.toggleStrictMode();
       }
+      this.message = this.messages[3];
       this.gameState = '';
     },
     startGame() {
       if(!this.powered){ return; }
       if(this.numberOfMoves > 0){ return; }
       this.selectRandomColor();
-      console.log(this.moves);
     },
     toggleStrictMode() {
       this.strictMode = !this.strictMode;
       let strictStatus = document.getElementById("strict");
       strictStatus.style.backgroundColor = this.strictMode ? 'red' : 'black'
-      
+    },
+    gameWon() {
+      this.message = this.messages[2];
+      setTimeout( () => { this.power(); }, 3000);
     },
     submitMove(color = '') {
-      // this.gameState = 'playerTurn';
       // fix to remove assignment to empty string
       if(color!=''){
         this.lightColor(color);
       } 
-      console.log('submitMove', color)
       if(this.moves[this.playerMoves] == color){
-        console.log('matched')
         this.playerMoves++;
-        // this.gameState = 'playerTurn';
+
         this.playerInput(this.waitTime);
 
         if(this.moves.length == this.playerMoves){
           this.playerMoves = 0;
           this.selectRandomColor();
         }
-        // return true;
       } else {
-          if (this.strictMode){
-            // show message end game
-            // setTimeout(()=>{
-            //   alert("Wrong move! Powering off")},1000);
-            this.power();
+          this.message = this.messages[0];
+          if (this.strictMode){  
+            setTimeout( () => { 
+            this.message = this.messages[3];
+            this.numberOfMoves = 0;
+            this.moves = [];
+            this.selectRandomColor(); }, 500); 
             return;
           }
-          console.log("wrong color");
-          // alert("Wrong color, playing sequence");
-          // // show warning
-          this.showMoves();
+          setTimeout( () => { 
+            this.message = this.messages[3];
+            this.showMoves(); }, 1000); 
         }
-      // return false;
     },
     selectRandomColor() {
       let randomColor = Math.floor(Math.random() * Math.floor(4));
@@ -113,7 +114,6 @@ export default {
       selectedColor.classList.toggle(`light-${color}`);
       this.playSound(color);
       setTimeout( () => {
-        console.log(selectedColor);
         selectedColor.classList.toggle(`light-${color}`);
       }, this.waitTime);
     },
@@ -122,25 +122,21 @@ export default {
     },
     showMoves() {
       this.gameState = 'playSequence';
-      console.log(this.moves);
-      // this.toggleClickState();
+      if (this.moves.length == 20){
+        return this.gameWon();
+      }
       let move = 0;
       let showSequence = setInterval( () => {
         this.lightColor(this.moves[move]);
         move++;
-        console.log(this.moves.length, 'length')
-        console.log(move,'move')
         if (move === this.moves.length){
-          console.log('clearsequence')
           clearInterval(showSequence);
-          // this.toggleClickState();
         }
       }, this.waitTime)   
       this.playerInput(this.waitTime);
     },
     playerInput(wait) {
       this.gameState = 'playerTurn';
-      //change to set interval and clear when move is submitted
       let delay = setInterval( () => {
         if (this.gameState === 'playerTurn'){
           clearInterval(delay);
@@ -151,9 +147,9 @@ export default {
       }, this.playerWaitTime);
     },
     outOfTime() {
-      // show message game over
+      this.message = this.messages[2];
       this.power();
-      console.log("Out of time")
+    
     },
     toggleClickState(state) {
       for(let color of this.colors){
@@ -162,8 +158,7 @@ export default {
           selectedColor.classList.add('click-state');
         } else {
           selectedColor.classList.remove('click-state');
-        }
-       
+        }  
       }
     },
 
@@ -182,13 +177,12 @@ export default {
 }
 </script>
 
-
 <style>
 .controls {
   display: flex;
   justify-content: space-around;
 }
-.control-text {
+.control-text, .message{
   font-weight: bold;
   color: white;
 }
@@ -270,4 +264,5 @@ border-radius: 100%;
 .click-state{
   pointer-events: none;
 }
+
 </style>
